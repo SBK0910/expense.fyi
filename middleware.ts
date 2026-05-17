@@ -1,48 +1,19 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server'
+import { updateSession } from 'lib/supabase/proxy'
 
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
-
-import urls from 'constants/url';
-
-export async function middleware(req: NextRequest) {
-	const res = NextResponse.next();
-	const hostname = req.headers.get('host');
-	const url = req.nextUrl;
-
-	const currentHost = hostname?.replace(`.${urls.homeWithoutApp}`, '');
-
-	const supabase = createMiddlewareClient({ req, res });
-	const { data } = await supabase.auth.getSession();
-	const { session } = data;
-
-	if (currentHost === 'app') {
-		if (url.pathname === '/signin' || url.pathname === '/signup') {
-			if (session) {
-				url.pathname = '/';
-				return NextResponse.redirect(url);
-			}
-			return res;
-		}
-
-		url.pathname = `/dashboard${url.pathname}`;
-		return NextResponse.rewrite(url);
-	}
-
-	return res;
+export async function middleware(request: NextRequest) {
+	return await updateSession(request)
 }
 
 export const config = {
 	matcher: [
 		/*
-		 * Match all paths except for:
-		 * 1. /api/ routes
-		 * 2. /_next/ (Next.js internals)
-		 * 3. /_proxy/ (special page for OG tags proxying)
-		 * 4. /_static (inside /public)
-		 * 5. /_vercel (Vercel internals)
-		 * 6. /favicon.ico, /sitemap.xml (static files)
+		 * Match all request paths except for the ones starting with:
+		 * - _next/static (static files)
+		 * - _next/image (image optimization files)
+		 * - favicon.ico (favicon file)
+		 * Feel free to modify this pattern to include more paths.
 		 */
-		'/((?!api/|_next/|_proxy/|_static|_vercel|favicon.ico|sitemap.xml).*)',
+		'/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
 	],
-};
+}
